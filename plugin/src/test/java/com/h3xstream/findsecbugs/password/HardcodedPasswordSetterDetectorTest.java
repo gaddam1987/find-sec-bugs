@@ -30,13 +30,13 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-public class IntuitiveHardcodePasswordDetectorTest extends BaseDetectorTest {
+public class HardcodedPasswordSetterDetectorTest extends BaseDetectorTest {
 
 
     @Test
     public void detectHardCodePasswordsAndKeys() throws Exception {
-//        FindSecBugsGlobalConfig.getInstance().setDebugPrintInstructionVisited(false);
-//        FindSecBugsGlobalConfig.getInstance().setDebugTaintState(false);
+//        FindSecBugsGlobalConfig.getInstance().setDebugPrintInstructionVisited(true);
+//        FindSecBugsGlobalConfig.getInstance().setDebugTaintState(true);
 
 
         String[] files = {

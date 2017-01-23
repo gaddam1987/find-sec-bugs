@@ -18,8 +18,9 @@
 package com.h3xstream.findsecbugs.injection;
 
 import com.h3xstream.findsecbugs.FindSecBugsGlobalConfig;
+import com.h3xstream.findsecbugs.taintanalysis.TaintDataflowEngine;
+import com.h3xstream.findsecbugs.taintanalysis.TaintFrameAdditionalVisitor;
 import edu.umd.cs.findbugs.BugReporter;
-import edu.umd.cs.findbugs.SystemProperties;
 import edu.umd.cs.findbugs.ba.AnalysisContext;
 import edu.umd.cs.findbugs.io.IO;
 import edu.umd.cs.findbugs.util.ClassName;
@@ -29,7 +30,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -195,5 +195,10 @@ public abstract class BasicInjectionDetector extends AbstractInjectionDetector {
     private String getFullMethodName(InvokeInstruction invoke, ConstantPoolGen cpg) {
         return ClassName.toSlashedClassName(invoke.getReferenceType(cpg).toString())
                 + "." + invoke.getMethodName(cpg) + invoke.getSignature(cpg);
+    }
+
+
+    public void registerVisitor(TaintFrameAdditionalVisitor visitor) {
+        TaintDataflowEngine.registerAdditionalVisitor(visitor);
     }
 }

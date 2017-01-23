@@ -15,23 +15,30 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library.
  */
-package com.h3xstream.findsecbugs.injection;
+package com.h3xstream.findsecbugs.taintanalysis;
 
 import org.apache.bcel.generic.ConstantPoolGen;
-import org.apache.bcel.generic.InstructionHandle;
 import org.apache.bcel.generic.InvokeInstruction;
+import org.apache.bcel.generic.LoadInstruction;
+import org.apache.bcel.generic.MethodGen;
 
-public interface InjectionSource {
+public interface TaintFrameAdditionalVisitor {
 
     /**
-     * The implementation should identify method that are susceptible to injection and return
-     * parameters index that can injected.
-     *
-     * @param ins       Instruction visitLoad
-     * @param cpg       ConstantPool (needed to find the class name and method name associate to instruction)
-     * @param insHandle instruction handle (needed to look at the instruction around the current instruction)
-     * @return Precision about the parameter at risk for the current instruction visitLoad. (InjectionPoint.NONE when the method is safe)
+     *  @param invoke
+     * @param cpg
+     * @param methodGen
+     * @param frameType
      */
-    InjectionPoint getInjectableParameters(InvokeInstruction ins, ConstantPoolGen cpg, InstructionHandle insHandle);
+    void visitInvoke(InvokeInstruction invoke, ConstantPoolGen cpg, MethodGen methodGen, TaintFrame frameType);
+
+    /**
+     * @param load
+     * @param cpg
+     * @param methodGen
+     * @param frameType
+     * @param numProduced
+     */
+    void visitLoad(LoadInstruction load, ConstantPoolGen cpg, MethodGen methodGen, TaintFrame frameType, int numProduced);
 
 }

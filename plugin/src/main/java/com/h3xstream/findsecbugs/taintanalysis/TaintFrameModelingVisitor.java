@@ -29,7 +29,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.bcel.Constants;
 import org.apache.bcel.generic.AALOAD;
@@ -52,6 +55,7 @@ import org.apache.bcel.generic.InvokeInstruction;
 import org.apache.bcel.generic.LDC;
 import org.apache.bcel.generic.LDC2_W;
 import org.apache.bcel.generic.LoadInstruction;
+import org.apache.bcel.generic.MethodGen;
 import org.apache.bcel.generic.NEW;
 import org.apache.bcel.generic.ObjectType;
 import org.apache.bcel.generic.SIPUSH;
@@ -64,10 +68,15 @@ import org.apache.bcel.generic.StoreInstruction;
  */
 public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Taint, TaintFrame> {
 
+    private static final Logger LOG = Logger.getLogger(TaintFrameModelingVisitor.class.getName());
+
     private static final Map<String, Taint.Tag> REPLACE_TAGS;
     private final MethodDescriptor methodDescriptor;
     private final TaintConfig taintConfig;
     private final TaintMethodConfig analyzedMethodConfig;
+
+    private final List<TaintFrameAdditionalVisitor> visitors;
+    private final MethodGen methodGen;
 
     static {
         REPLACE_TAGS = new HashMap<String, Taint.Tag>();
@@ -87,7 +96,7 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
      * @throws NullPointerException if arguments method or taintConfig is null
      */
     public TaintFrameModelingVisitor(ConstantPoolGen cpg, MethodDescriptor method,
-            TaintConfig taintConfig) {
+            TaintConfig taintConfig, List<TaintFrameAdditionalVisitor> visitors,MethodGen methodGen) {
         super(cpg);
         if (method == null) {
             throw new NullPointerException("null method descriptor");
@@ -98,6 +107,8 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
         this.methodDescriptor = method;
         this.taintConfig = taintConfig;
         this.analyzedMethodConfig = new TaintMethodConfig(false);
+        this.visitors = visitors;
+        this.methodGen = methodGen;
     }
 
     private Collection<Integer> getMutableStackIndices(String signature) {
@@ -138,6 +149,7 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
         }
         super.analyzeInstruction(ins);
     }
+
 
     @Override
     public Taint getDefaultValue() {
@@ -267,17 +279,32 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
     }
 
     @Override
-    public void handleLoadInstruction(LoadInstruction obj) {
-        int numProduced = obj.produceStack(cpg);
+    public void handleLoadInstruction(LoadInstruction load) {
+        int numProducedOrig = load.produceStack(cpg);
+        int numProduced = numProducedOrig;
         if (numProduced == Constants.UNPREDICTABLE) {
             throw new InvalidBytecodeException("Unpredictable stack production");
         }
-        int index = obj.getIndex() + numProduced;
+        int index = load.getIndex() + numProduced;
         while (numProduced-- > 0) {
             Taint value = getFrame().getValue(--index);
-            assert value.hasValidVariableIndex() : "index not set in " + methodDescriptor;
-            assert index == value.getVariableIndex() : "bad index in " + methodDescriptor;
+            //assert value.hasValidVariableIndex() :
+            if(!value.hasValidVariableIndex()) {
+                throw new RuntimeException("index not set in " + methodDescriptor);
+            }
+            if(index != value.getVariableIndex()) {
+                throw new RuntimeException("bad index in " + methodDescriptor);
+            }
             getFrame().pushValue(new Taint(value));
+        }
+
+        for(TaintFrameAdditionalVisitor visitor : visitors) {
+            try {
+                visitor.visitLoad(load, cpg, methodGen, getFrame(), numProducedOrig);
+            }
+            catch (Throwable e) {
+                LOG.log(Level.SEVERE,"Error while executing "+visitor.getClass().getName(),e);
+            }
         }
     }
 
@@ -416,6 +443,16 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
 
             throw new RuntimeException("Unable to call " + className + '.' + methodName + signature, e);
         }
+
+
+        for(TaintFrameAdditionalVisitor visitor : visitors) {
+            try {
+                visitor.visitInvoke(obj, cpg, methodGen, getFrame());
+            }
+            catch (Throwable e) {
+                LOG.log(Level.SEVERE,"Error while executing "+visitor.getClass().getName(),e);
+            }
+        }
     }
 
     private TaintMethodConfig getMethodConfig(InvokeInstruction obj) {
@@ -449,8 +486,7 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
         return null;
     }
 
-    private TaintMethodConfig getConfigWithReplaceTags(
-            TaintMethodConfig config, String className, String methodName) {
+    private TaintMethodConfig getConfigWithReplaceTags(TaintMethodConfig config, String className, String methodName) {
         if (!"java/lang/String".equals(className)) {
             return config;
         }
@@ -669,35 +705,4 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
         }
     }
 
-    /**
-     * For debugging purpose.
-     * Print the state of the stack with information about the values in place.
-     *
-     * Usage: Call this function from your debugger (From your IDE UI: See Watches/Expressions)
-     */
-    private void printStackState() {
-         printStackState(getFrame());
-    }
-
-    public static void printStackState(TaintFrame frame) {
-        try {
-            System.out.println("============================");
-            if(!FindSecBugsGlobalConfig.getInstance().isDebugTaintState()) {
-                System.out.println(" /!\\ Warning : The taint debugging is not fully activated.");
-            }
-            System.out.println("[[ Stack ]]");
-            int stackDepth = frame.getStackDepth();
-            for (int i = 0; i < stackDepth; i++) {
-                Taint taintValue = frame.getStackValue(i);
-                System.out.println(String.format("%s. %s {%s}",
-                        i, taintValue.getState().toString(), taintValue.getDebugInfo()));
-            }
-            if (stackDepth == 0) {
-                System.out.println("Empty");
-            }
-            System.out.println("============================");
-        } catch (DataflowAnalysisException e) {
-            System.out.println("Oups "+e.getMessage());
-        }
-    }
 }

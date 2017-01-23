@@ -101,7 +101,8 @@ public class Taint {
         CUSTOM_INJECTION_SAFE,
 
         PASSWORD_VARIABLE,
-        CREDIT_CARD_VARIABLE;
+        CREDIT_CARD_VARIABLE,
+        HASH_VARIABLE;
     }
     
     private State state;

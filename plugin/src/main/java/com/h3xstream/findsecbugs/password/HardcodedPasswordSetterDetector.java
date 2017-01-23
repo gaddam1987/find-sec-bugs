@@ -42,11 +42,11 @@ import java.util.List;
  * <p>It will match method that contains other keywords prefixing or suffixing.
  * <code>MyClient.setConnectionPwd("abc123!");</code></p>
  */
-public class IntuitiveHardcodePasswordDetector extends BasicInjectionDetector {
+public class HardcodedPasswordSetterDetector extends BasicInjectionDetector {
 
     private static final String HARD_CODE_PASSWORD_TYPE = "HARD_CODE_PASSWORD";
 
-    private static List<String> PASSWORD_WORDS = new ArrayList<String>();
+    public static List<String> PASSWORD_WORDS = new ArrayList<String>();
     static {
         //Passwords in various language
         //http://www.indifferentlanguages.com/words/password
@@ -69,7 +69,7 @@ public class IntuitiveHardcodePasswordDetector extends BasicInjectionDetector {
         PASSWORD_WORDS.add("pwd");
     }
 
-    public IntuitiveHardcodePasswordDetector(BugReporter bugReporter) {
+    public HardcodedPasswordSetterDetector(BugReporter bugReporter) {
         super(bugReporter);
     }
 

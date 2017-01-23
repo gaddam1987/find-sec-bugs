@@ -17,7 +17,11 @@
  */
 package com.h3xstream.findsecbugs.common;
 
+import com.h3xstream.findsecbugs.taintanalysis.InvalidStateException;
 import edu.umd.cs.findbugs.OpcodeStack;
+import org.apache.bcel.classfile.LocalVariable;
+import org.apache.bcel.generic.LocalVariableGen;
+import org.apache.bcel.generic.MethodGen;
 
 public class StackUtils {
 
@@ -35,6 +39,15 @@ public class StackUtils {
 
     public static boolean isConstantInteger(OpcodeStack.Item item) {
         return item.getConstant() != null && item.getConstant() instanceof Integer;
+    }
+
+    public static LocalVariableGen getLocalVariable(MethodGen methodGen, int index) {
+        for(LocalVariableGen local : methodGen.getLocalVariables()) {
+            if(local.getIndex() == index) {
+                return local;
+            }
+        }
+        return null;
     }
 
 }

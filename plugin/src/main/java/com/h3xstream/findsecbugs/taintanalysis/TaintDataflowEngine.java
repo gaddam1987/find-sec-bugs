@@ -38,6 +38,8 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -72,7 +74,8 @@ public class TaintDataflowEngine implements IMethodAnalysisEngine<TaintDataflow>
     };
     private final TaintConfig taintConfig = new TaintConfig();
     private static Writer writer = null;
-    
+    private static List<TaintFrameAdditionalVisitor> visitors = new ArrayList<TaintFrameAdditionalVisitor>();
+
     static {
         if (CONFIG.isDebugOutputTaintConfigs()) {
             try {
@@ -116,6 +119,10 @@ public class TaintDataflowEngine implements IMethodAnalysisEngine<TaintDataflow>
         if (!CONFIG.isTaintedMainArgument()) {
             LOGGER.info("The argument of the main method is not considered tainted");
         }
+    }
+
+    public static void registerAdditionalVisitor(TaintFrameAdditionalVisitor visitor) {
+        visitors.add(visitor);
     }
     
     private void loadTaintConfig(String path, boolean checkRewrite) {
@@ -161,7 +168,7 @@ public class TaintDataflowEngine implements IMethodAnalysisEngine<TaintDataflow>
         CFG cfg = cache.getMethodAnalysis(CFG.class, descriptor);
         DepthFirstSearch dfs = cache.getMethodAnalysis(DepthFirstSearch.class, descriptor);
         MethodGen methodGen = cache.getMethodAnalysis(MethodGen.class, descriptor);
-        TaintAnalysis analysis = new TaintAnalysis(methodGen, dfs, descriptor, taintConfig);
+        TaintAnalysis analysis = new TaintAnalysis(methodGen, dfs, descriptor, taintConfig, visitors);
         TaintDataflow flow = new TaintDataflow(cfg, analysis);
         flow.execute();
         analysis.finishAnalysis();
@@ -184,7 +191,7 @@ public class TaintDataflowEngine implements IMethodAnalysisEngine<TaintDataflow>
         String slashedClassName = methodGen.getClassName().replace('.', '/');
         return slashedClassName + "." + methodNameWithSignature;
     }
-    
+
     @Override
     public void registerWith(IAnalysisCache iac) {
         iac.registerMethodAnalysisEngine(TaintDataflow.class, this);
