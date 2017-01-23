@@ -37,8 +37,11 @@ import org.apache.bcel.generic.MethodGen;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import static com.h3xstream.findsecbugs.common.matcher.InstructionDSL.invokeInstruction;
+
+
 
 /**
  * <p>
@@ -60,6 +63,8 @@ public class HashUnsafeEqualsDetector extends BasicInjectionDetector implements 
 
     private static final InvokeMatcherBuilder ARRAYS_EQUALS_METHOD = invokeInstruction() //
             .atClass("java/util/Arrays").atMethod("equals").withArgs("([B[B)Z");
+
+    private static final Logger LOG = Logger.getLogger(HardcodedPasswordEqualsDetector.class.getName());
 
 
     public static List<String> HASH_WORDS = new ArrayList<String>();
@@ -112,25 +117,23 @@ public class HashUnsafeEqualsDetector extends BasicInjectionDetector implements 
         //Extract the name of the variable
         int index = instruction.getIndex();
         LocalVariableGen var = StackUtils.getLocalVariable(methodGen, index);
-        if(var == null) return;
-        //if(var == null) throw new InvalidStateException("Unable to get field name for index "+ index + " in "+methodGen);
+        if(var == null) {
+//            LOG.warning("Unable to get field name for index "+ index + " in "+methodGen);
+            return;
+        }
         String fieldName = var.getName();
+        //System.out.println("Field name : "+fieldName);
 
         boolean isHashVariable = false;
         String fieldNameLower = fieldName.toLowerCase();
-        for (String password : HASH_WORDS) {
+        keywordSearch: for (String password : HASH_WORDS) {
             if (fieldNameLower.contains(password)) {
                 isHashVariable = true;
+                break keywordSearch;
             }
         }
 
-        if(!isHashVariable) {return;}
-
-        //Mark local variable
-        Taint passwordValue = frameType.getValue(index);
-        passwordValue.addTag(Taint.Tag.HASH_VARIABLE);
-
-        if(numProduced <= 0) {return;}
+        if(!isHashVariable || numProduced <= 0) {return;}
 
         //Mark the stack value
         try {

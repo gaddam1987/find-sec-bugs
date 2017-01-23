@@ -25,7 +25,9 @@ import org.apache.bcel.generic.MethodGen;
 public interface TaintFrameAdditionalVisitor {
 
     /**
-     *  @param invoke
+     * Called each time a method invocation is seen by the taint analysis
+     *
+     * @param invoke
      * @param cpg
      * @param methodGen
      * @param frameType
@@ -33,6 +35,8 @@ public interface TaintFrameAdditionalVisitor {
     void visitInvoke(InvokeInstruction invoke, ConstantPoolGen cpg, MethodGen methodGen, TaintFrame frameType);
 
     /**
+     * Called each time a load instruction is seen by the taint analysis
+     *
      * @param load
      * @param cpg
      * @param methodGen

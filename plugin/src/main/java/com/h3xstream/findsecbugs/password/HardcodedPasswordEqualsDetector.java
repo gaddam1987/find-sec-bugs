@@ -25,6 +25,7 @@ import com.h3xstream.findsecbugs.taintanalysis.InvalidStateException;
 import com.h3xstream.findsecbugs.taintanalysis.Taint;
 import com.h3xstream.findsecbugs.taintanalysis.TaintFrame;
 import com.h3xstream.findsecbugs.taintanalysis.TaintFrameAdditionalVisitor;
+import com.h3xstream.findsecbugs.taintanalysis.TaintFrameModelingVisitor;
 import edu.umd.cs.findbugs.BugReporter;
 import edu.umd.cs.findbugs.Priorities;
 import edu.umd.cs.findbugs.ba.DataflowAnalysisException;
@@ -34,6 +35,8 @@ import org.apache.bcel.generic.InvokeInstruction;
 import org.apache.bcel.generic.LoadInstruction;
 import org.apache.bcel.generic.LocalVariableGen;
 import org.apache.bcel.generic.MethodGen;
+
+import java.util.logging.Logger;
 
 import static com.h3xstream.findsecbugs.common.matcher.InstructionDSL.invokeInstruction;
 
@@ -49,6 +52,7 @@ import static com.h3xstream.findsecbugs.common.matcher.InstructionDSL.invokeInst
  * </pre>
  */
 public class HardcodedPasswordEqualsDetector extends BasicInjectionDetector implements TaintFrameAdditionalVisitor {
+    private static final Logger LOG = Logger.getLogger(HardcodedPasswordEqualsDetector.class.getName());
 
     private static final String HARD_CODE_PASSWORD_TYPE = "HARD_CODE_PASSWORD";
 
@@ -103,27 +107,23 @@ public class HardcodedPasswordEqualsDetector extends BasicInjectionDetector impl
         //Extract the name of the variable
         int index = instruction.getIndex();
         LocalVariableGen var = StackUtils.getLocalVariable(methodGen, index);
-        if(var == null) return;
-        //if(var == null) throw new InvalidStateException("Unable to get field name for index "+ index + " in "+methodGen);
+        if(var == null) {
+//            LOG.warning("Unable to get field name for index "+ index + " in "+methodGen);
+            return;
+        }
         String fieldName = var.getName();
         //System.out.println("Field name : "+fieldName);
 
-
         boolean isPasswordVariable = false;
         String fieldNameLower = fieldName.toLowerCase();
-        for (String password : HardcodedPasswordSetterDetector.PASSWORD_WORDS) {
+        keywordSearch: for (String password : HardcodedPasswordSetterDetector.PASSWORD_WORDS) {
             if (fieldNameLower.contains(password)) {
                 isPasswordVariable = true;
+                break keywordSearch;
             }
         }
 
-        if(!isPasswordVariable) {return;}
-
-        //Mark local variable
-        Taint passwordValue = frameType.getValue(index);
-        passwordValue.addTag(Taint.Tag.PASSWORD_VARIABLE);
-
-        if(numProduced <= 0) {return;}
+        if(!isPasswordVariable || numProduced <= 0) {return;}
 
         //Mark the stack value
         try {
