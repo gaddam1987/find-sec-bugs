@@ -32,6 +32,8 @@ import java.util.*;
 import org.apache.bcel.classfile.Method;
 import org.apache.bcel.generic.InstructionHandle;
 
+import static java.util.Comparator.comparing;
+
 /**
  * Used to represent location of a taint sink
  * 
@@ -142,9 +144,9 @@ public class InjectionSink {
         bug.addSourceLine(SourceLineAnnotation.fromVisitedInstruction(classContext, method, instructionHandle));
         addMessage(bug, "Sink method", sinkMethod);
         addMessage(bug, "Sink parameter", String.valueOf(parameterOffset));
-
-        for(UnknownSource source : sources) {
-            if(source.getSourceType() == UnknownSourceType.FIELD) {
+        sources.sort(comparing(UnknownSource::toString));
+        for (UnknownSource source : sources) {
+            if (source.getSourceType() == UnknownSourceType.FIELD) {
                 addMessage(bug, "Unknown source", source.getSignatureField());
             }
             else if(source.getSourceType() == UnknownSourceType.RETURN) {
